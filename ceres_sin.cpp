@@ -17,7 +17,7 @@ opencv库：<opencv2/opencv.hpp>
 //#include <debug.h>
 #include <ceres/ceres.h>
 #include <Eigen/Core>
-#include <matplotlibcpp.h>//如果无需绘图便可以注释掉，但是如果将这个python下的库文件放进来的方式————存疑
+#include <matplotlibcpp.h>//已经配置完毕
 #include <opencv2/opencv.hpp>
 
 //#include <yaml-cpp/yaml.h>
@@ -32,7 +32,7 @@ using namespace plt;
 
 // const string pf_path = "filter_param.yaml";//粒子滤波参数文件
 
-// class ParticleFilter//粒子滤波类，存疑
+// class ParticleFilter//粒子滤波类
 // {
 // public:
 //     //ParticleFilter(YAML::Node &config,const string param_name);
@@ -319,7 +319,7 @@ double evalRMSE(double params[4])
 
 
 
-/*定义初始化待拟合变量*/
+
 
    
 
@@ -331,8 +331,8 @@ int main()
     params[1] = 0; 
     params[2] = 0; 
     params[3] = 0;
-    // YAML::Node config = YAML::LoadFile(pf_path);//////////将yaml文件中的变量放在config中，存疑
-    // pf_param_loader.initParam(config, "buff");//////////////存疑
+    // YAML::Node config = YAML::LoadFile(pf_path);//////////将yaml文件中的变量放在config中便于粒子滤波使用数据
+    // pf_param_loader.initParam(config, "buff");//////////////
 
 
     for(int i=1;i<200;i++)//为什么数据点影响这么大
@@ -344,9 +344,9 @@ int main()
 		x_data.push_back(x);
         //double t=rng.gaussian(w_sigma);
         double noise_y=ar*sin(br*x+cr)+dr+rng.gaussian(w_sigma);
-        //cout<<rng.gaussian(w_sigma)<<" "<<noise_y<<endl;//noise_y值没有动！！
-        y_data.push_back(ar*ceres::sin(br*x+cr)+dr + rng.gaussian(w_sigma));//加上高斯噪声，发现高斯噪声没有发挥作用，输出之后发现确实是有值的
-        target.speed=y_data.back();//应该是不断把尾部的数据放入目标队列中
+        //cout<<rng.gaussian(w_sigma)<<" "<<noise_y<<endl;
+        y_data.push_back(ar*ceres::sin(br*x+cr)+dr + rng.gaussian(w_sigma));
+        target.speed=y_data.back();//不断把尾部的数据放入目标队列中
         target.timestamp=x_data.back();
         //cout<<rng.gaussian(w_sigma*w_sigma)<<endl;
         //cout<<target.timestamp<<" "<<x_data.back()<<" "<<target.speed<<" "<<y_data.back()<<endl;数据是一样的，没有问题;y值计算也是正确的没有问题
@@ -380,7 +380,7 @@ int main()
     {
         history_info.push_back(target);
         //last_target = target;
-        //return false;//让它不运行的原来是这个位置，这个位置直接让主函数返回了
+        //return false;//让它不运行的是这个位置，这个位置直接让主函数返回了
 
     }
     else if (history_info.size() == deque_len)
@@ -395,7 +395,7 @@ int main()
         history_info.push_back(target);
     }
     }
- /*计算扇叶旋转方向（由总速度是否为正？？是这样求的，因为其速度正铉函数是恒为正或恒为负），给之后拟合数据的使用做准备？：*/
+ /*计算扇叶旋转方向（因为速度正铉函数是恒为正或恒为负），给之后拟合数据的使用做准备*/
     double rotate_speed_sum = 0;
     int rotate_sign=1;
     for (auto target_info : history_info) //遍历队列累加速度值
@@ -405,15 +405,15 @@ int main()
     for (auto target_info : history_info)
         cout<<target_info.timestamp<<" "<<target_info.speed<<endl;
 
-cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
+ //cout<<"测试位置一hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
  //一次拟合未进行或未成功下的进行一次拟合
         while (!is_params_confirmed)
         {
             ceres::Problem problem;               //构建问题
             ceres::Solver::Options options;       //构建选项
             ceres::Solver::Summary summary;       //优化信息
-            double params_fitting[4] = {1, 1, 1, mean_velocity};//初始化待拟合参数：但是mean_velocity基本上不是正确的b值，相当于也是给了一个普通值来看
-        //将旋转方向变成影响拟合的参数值，顺时针为-1 存疑
+            double params_fitting[4] = {1, 1, 1, mean_velocity};//初始化待拟合参数：但是前三个值给的是中间值，最后值给的是计算值，减小与真实值的初始差，降低迭代时间
+        //将旋转方向变成影响拟合的参数值，顺时针为-1
         // if (rotate_speed_sum / fabs(rotate_speed_sum) >= 0)
         //         rotate_sign = 1;
         // else
@@ -424,7 +424,7 @@ cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
             problem.AddResidualBlock (     // 向问题中添加误差项
             // 使用自动求导，模板参数：误差类型，输出维度，输入维度，维数要与前面struct中一致
                 new ceres::AutoDiffCostFunction<CURVE_FITTING_COST, 1, 4> ( 
-                        new CURVE_FITTING_COST ((float)(target_info.timestamp) ,target_info.speed  * rotate_sign)//懂了！：在这里对速度乘上旋转标志，让速度量变成恒正的量，相当与把图像往坐标轴上翻过去了
+                        new CURVE_FITTING_COST ((float)(target_info.timestamp) ,target_info.speed  * rotate_sign)//这里对速度乘上旋转标志，让速度量变成恒正的量，相当与把图像往坐标轴上翻过去了
                         ),                              //添加在误差项里面的俩个参数分别是时间和速度，也就是最开始的x和y输入值
                 new ceres::CauchyLoss(0.5),     //柯西核函数
                 params_fitting                  // 待估计参数
@@ -436,9 +436,9 @@ cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
         options.minimizer_progress_to_stdout=true;
         options.max_num_iterations=200;
         options.num_threads=1;
-        //设置待拟合4个参数的上下限，之后便可进行solve（原来是这样，超过了上下限，但是拟合出来的结果依旧不堪入目，太飘了吧！！哪里出了问题）
+        //设置待拟合4个参数的上下限，之后便可进行solve（但是拟合出来的结果依旧不堪）
         problem.SetParameterLowerBound(params_fitting,0,0);
-        problem.SetParameterUpperBound(params_fitting,0,10);
+        problem.SetParameterUpperBound(params_fitting,0,10);//较大的上下限用于观察拟合效果，用于测试
         problem.SetParameterLowerBound(params_fitting,1,0);
         problem.SetParameterUpperBound(params_fitting,1,10);
         problem.SetParameterLowerBound(params_fitting,2,-CV_PI);
@@ -447,12 +447,12 @@ cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
         problem.SetParameterUpperBound(params_fitting,3,10);
         //拟合求解并将信息放入summary中
         ceres::Solve(options, &problem, &summary);
-        cout<<params_fitting[0]<<" "<<params_fitting[1]<<" "<<params_fitting[2]<<" "<<params_fitting[3]<<endl;//这里便不是正常值了
+        cout<<params_fitting[0]<<" "<<params_fitting[1]<<" "<<params_fitting[2]<<" "<<params_fitting[3]<<endl;//一次拟合之后得到不理想值
         //拟合得到的参数数据放入临时数组用于判断是否有效
         double params_tmp[4] = {params_fitting[0] * rotate_sign, params_fitting[1], params_fitting[2], params_fitting[3] * rotate_sign};//把拟合得到的速度量再次取反回归原图像是为了在计算误差和传过来的带正负的速度进行计算
         auto rmse = evalRMSE(params_tmp);//计算参数的误差
         cout<<rmse<<endl;
-        if (rmse > 2)//超过提前设定的最大误差，则拟合失败,重新在while下进行拟合（修改之后，但是由于输入的数据和残差方式没变，最后直接死循环）
+        if (rmse > 2)//超过提前设定的最大误差，则拟合失败,重新在while下进行拟合（修改之后，但是由于输入的数据和残差方式没变，不论拟合次数怎么样，得到的均方差都差不多，最后直接死循环）
             {   
 
                 cout<<summary.BriefReport()<<endl;
@@ -467,13 +467,13 @@ cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
                 params[2] = params_fitting[2];
                 params[3] = params_fitting[3] * rotate_sign;
                 is_params_confirmed = true;
-                cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhnew_二次拟合没进行说明这里没有进行"<<endl;
+                //cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhnew_二次拟合没进行说明这里没有进行"<<endl;
             }
-            cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhnew_二次拟合咋没进行"<<endl;
+            //cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhnew_二次拟合咋没进行"<<endl;
         }
-        /*一次拟合完成，准备进行二次拟合，沈航代码逻辑语句错误(原来用的是ifelse，但实际上应该用while)，导致一次拟合之后没能进行二次拟合*/
+        /*一次拟合完成，准备进行二次拟合，原逻辑语句错误(原来用的是ifelse，但实际上应该用while)，导致一次拟合之后没能进行二次拟合*/
         
-           cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhnew_二次拟合了吗"<<endl;         
+           //cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhnew_二次拟合了吗"<<endl;//测试中二次拟合和第一次差别不大         
             ceres::Problem problem;
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;       // 优化信息
@@ -520,12 +520,12 @@ cout<<"hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"<<endl;
         {
             auto t = (float)(target_info.timestamp) ;
             plt_time.push_back(t);
-            plt_speed.push_back(target_info.speed);
-            plt_fitted.push_back(params[0] * sin (params[1] * t + params[2]) + params[3]);//拟合效果咋回事
+            plt_speed.push_back(target_info.speed);//放进去的y值数据
+            plt_fitted.push_back(params[0] * sin (params[1] * t + params[2]) + params[3]);//拟合出来的y值数据
         }
         plt::clf();
         plt::plot(plt_time, plt_speed,"bx");
-        plt::plot(plt_time, plt_fitted,"r-");//这个在实际画的时候没有画出来是为什么，把时间戳的除的1000去掉就能出来了，但是效果也不咋地
+        plt::plot(plt_time, plt_fitted,"r-");//这个在实际画的时候没有画出来是为什么，把时间戳的除的1000去掉就能出来了（因为测试用的是秒为单位，实际是毫秒）
         plt::pause(0.001);
 
     plt::show();
