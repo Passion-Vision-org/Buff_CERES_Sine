@@ -8,7 +8,7 @@ project(ceres_sin)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Ceres REQUIRED)#这个需要改一下
+find_package(Ceres REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED)
@@ -24,7 +24,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories("/home/xws/matplotlib-cpp/")
  
 add_executable(ceres_sin ceres_sin.cpp)
-#add_executable(ceres_sin debug.h my_pre.h my_pre.cpp filter_param.yaml)#这个需要改一下啦
+#add_executable(ceres_sin debug.h my_pre.h my_pre.cpp filter_param.yaml)
 #add_executable(matplotlibcpp_test matplotlibcpp_test.cpp)
 
 
